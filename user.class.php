@@ -335,15 +335,15 @@ class User
         $username,
         $password,
         $passwordCheck,
-        $mail,
-        $firstname,
-        $lastname,
-        $address,
-        $zip,
-        $city,
-        $country,
-        $phone,
-        $active
+        $mail = '',
+        $firstname = '',
+        $lastname = '',
+        $address = '',
+        $zip = '',
+        $city = '',
+        $country = '',
+        $phone = '',
+        $active = false
     ) {
         if ($id == '' ||
             $username == '' ||
