@@ -67,6 +67,7 @@ class User
      * @param string $username Username for the new user
      * @param string $password Password for the new user
      * @param string $passwordCheck Repeated password to compare with $password
+     * @param string $mail Mail for the new user
      * @param string $firstname Firstname for the new user
      * @param string $lastname Lastname for the new user
      * @param string $address Address for the new user
@@ -74,7 +75,6 @@ class User
      * @param string $city City for the new user
      * @param string $country Country for the new user
      * @param string $phone Phone for the new user
-     * @param string $mail Mail for the new user
      * @param boolean $active Specifies if the user should be active
      *
      * @return boolean Returns if the user was added
@@ -83,6 +83,7 @@ class User
         $username,
         $password,
         $passwordCheck,
+        $mail = '',
         $firstname = '',
         $lastname = '',
         $address = '',
@@ -90,7 +91,6 @@ class User
         $city = '',
         $country = '',
         $phone = '',
-        $mail = '',
         $active = false
     ) {
         // Check if username and password are given
@@ -152,6 +152,7 @@ class User
             INSERT INTO ' . $this->dbTables['user'] . '(
                 username,
                 password,
+                mail,
                 firstname,
                 lastname,
                 address,
@@ -159,12 +160,12 @@ class User
                 city,
                 country,
                 phone,
-                mail,
                 active,
                 token
             ) VALUES(
                 :username,
                 :password,
+                :mail,
                 :firstname,
                 :lastname,
                 :address,
@@ -172,7 +173,6 @@ class User
                 :city,
                 :country,
                 :phone,
-                :mail,
                 :active,
                 :token
             )
@@ -180,6 +180,7 @@ class User
 
         $stmt->bindParam(':username', $username);
         $stmt->bindParam(':password', $password);
+        $stmt->bindParam(':mail', $mail);
         $stmt->bindParam(':firstname', $firstname);
         $stmt->bindParam(':lastname', $lastname);
         $stmt->bindParam(':address', $address);
@@ -187,7 +188,6 @@ class User
         $stmt->bindParam(':city', $city);
         $stmt->bindParam(':country', $country);
         $stmt->bindParam(':phone', $phone);
-        $stmt->bindParam(':mail', $mail);
         $stmt->bindParam(':active', $active);
         $stmt->bindParam(':token', $token);
         $stmt->execute();
@@ -242,23 +242,24 @@ class User
     public function databaseCreateTables()
     {
         $stmt = $this->db->prepare('
-            CREATE TABLE `' . $this->dbTables['user'] . '` (
-                `UID` INT NOT NULL AUTO_INCREMENT,
-                `username` TEXT NOT NULL,
-                `password` TEXT NOT NULL,
-                `firstname` TEXT,
-                `lastname` TEXT,
-                `address` TEXT,
-                `zip` INT,
-                `city` TEXT,
-                `country` TEXT,
-                `phone` TEXT,
-                `mail` TEXT,
-                `active` TINYINT(1) NOT NULL DEFAULT 0,
-                `token` TEXT,
-                `created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                `updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (`UID`)
+            CREATE TABLE ' . $this->dbTables['user'] . ' (
+                UID INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                username TEXT NOT NULL,
+                password TEXT NOT NULL,
+                mail TEXT,
+                firstname TEXT,
+                lastname TEXT,
+                address TEXT,
+                zip INT(5) UNSIGNED,
+                city TEXT,
+                country TEXT,
+                phone TEXT,
+                active TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+                token TEXT,
+                created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (UID)
             ) DEFAULT CHARSET=utf8
         ');
 
@@ -317,6 +318,7 @@ class User
      * @param string $username Username for the user to edit
      * @param string $password Password for the user to edit
      * @param string $passwordCheck Repeated password to compare with $password
+     * @param string $mail Mail for the user to edit
      * @param string $firstname Firstname for the user to edit
      * @param string $lastname Lastname for the user to edit
      * @param string $address Address for the user to edit
@@ -324,7 +326,6 @@ class User
      * @param string $city City for the user to edit
      * @param string $country Country for the user to edit
      * @param string $phone Phone for the user to edit
-     * @param string $mail Mail for the user to edit
      * @param boolean $active State of the user to edit
      *
      * @return boolean Returns if the user was edited
@@ -334,6 +335,7 @@ class User
         $username,
         $password,
         $passwordCheck,
+        $mail,
         $firstname,
         $lastname,
         $address,
@@ -341,7 +343,6 @@ class User
         $city,
         $country,
         $phone,
-        $mail,
         $active
     ) {
         if ($id == '' ||
@@ -395,6 +396,7 @@ class User
             UPDATE ' . $this->dbTables['user'] . ' SET
                 username = :username,
                 ' . ($password != '' ? 'password = :password,' : '') . '
+                mail = :mail,
                 firstname = :firstname,
                 lastname = :lastname,
                 address = :address,
@@ -402,7 +404,6 @@ class User
                 city = :city,
                 country = :country,
                 phone = :phone,
-                mail = :mail,
                 active = :active
             WHERE
                 UID = :UID
@@ -414,6 +415,7 @@ class User
 
         $stmt->bindParam(':UID', $id);
         $stmt->bindParam(':username', $username);
+        $stmt->bindParam(':mail', $mail);
         $stmt->bindParam(':firstname', $firstname);
         $stmt->bindParam(':lastname', $lastname);
         $stmt->bindParam(':address', $address);
@@ -421,7 +423,6 @@ class User
         $stmt->bindParam(':city', $city);
         $stmt->bindParam(':country', $country);
         $stmt->bindParam(':phone', $phone);
-        $stmt->bindParam(':mail', $mail);
         $stmt->bindParam(':active', $active);
 
         if ($stmt->execute()) {
@@ -474,6 +475,7 @@ class User
                 UID,
                 username,
                 password,
+                mail,
                 firstname,
                 lastname,
                 address,
@@ -481,7 +483,6 @@ class User
                 city,
                 country,
                 phone,
-                mail,
                 active,
                 DATE_FORMAT(created, '%d.%m.%Y') AS created,
                 DATE_FORMAT(updated, '%d.%m.%Y') AS updated
@@ -519,6 +520,7 @@ class User
             SELECT
                 UID,
                 username,
+                mail,
                 firstname,
                 lastname,
                 address,
@@ -526,7 +528,6 @@ class User
                 city,
                 country,
                 phone,
-                mail,
                 active,
                 DATE_FORMAT(created, '%d.%m.%Y') AS created,
                 DATE_FORMAT(updated, '%d.%m.%Y') AS updated
@@ -620,19 +621,20 @@ class User
         $username,
         $password,
         $passwordCheck,
+        $mail = '',
         $firstname = '',
         $lastname = '',
         $address = '',
         $zip = '',
         $city = '',
         $country = '',
-        $phone = '',
-        $mail = ''
+        $phone = ''
     ) {
         if ($this->addUser(
             $username,
             $password,
             $passwordCheck,
+            $mail,
             $firstname,
             $lastname,
             $address,
@@ -640,7 +642,6 @@ class User
             $city,
             $country,
             $phone,
-            $mail,
             false
         )) {
             return true;
