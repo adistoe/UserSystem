@@ -347,7 +347,6 @@ class User
     ) {
         if ($id == '' ||
             $username == '' ||
-            $password == '' ||
             $password != $passwordCheck
         ) {
             return false;
