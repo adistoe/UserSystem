@@ -280,7 +280,7 @@ class User
     public function deleteUser($id)
     {
         // Delete user
-        if ($usePermissions) {
+        if ($this->usePermissions) {
             $stmt = $this->db->prepare('
                 DELETE
                     u,
