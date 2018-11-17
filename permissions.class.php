@@ -38,19 +38,19 @@ class Permissions
     {
         if ($this->db->query('
             CREATE TABLE ' . $this->dbTables['groups'] . '(
-                GID INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+                GID INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
                 name VARCHAR(100) NOT NULL
             );
 
             CREATE TABLE ' . $this->dbTables['permissions'] . '(
-                PID INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+                PID INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
                 name VARCHAR(100) NOT NULL,
                 description VARCHAR(200) NOT NULL
             );
 
             CREATE TABLE ' . $this->dbTables['group_permissions'] . '(
-                GID INT NOT NULL,
-                PID INT NOT NULL,
+                GID INT UNSIGNED NOT NULL,
+                PID INT UNSIGNED NOT NULL,
                 PRIMARY KEY (GID, PID),
                 CONSTRAINT GP_FK_GID FOREIGN KEY (GID)
                     REFERENCES ' . $this->dbTables['groups'] . ' (GID),
@@ -59,9 +59,11 @@ class Permissions
             );
 
             CREATE TABLE ' . $this->dbTables['user_groups'] . '(
-                UID INT NOT NULL,
-                GID INT NOT NULL,
+                UID INT UNSIGNED NOT NULL,
+                GID INT UNSIGNED NOT NULL,
                 PRIMARY KEY (UID, GID),
+                CONSTRAINT UG_FK_UID FOREIGN KEY (UID)
+                    REFERENCES ' . $this->dbTables['user'] . ' (UID),
                 CONSTRAINT UG_FK_GID FOREIGN KEY (GID)
                     REFERENCES ' . $this->dbTables['groups'] . ' (GID)
             );
