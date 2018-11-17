@@ -716,8 +716,16 @@ class Permissions
 
         if (count($args) > 0) {
             foreach ($args as $arg) {
-                if ($this->hasPermission($arg)) {
-                    return true;
+                if (is_array($arg)) {
+                    foreach ($arg as $arrayArg) {
+                        if (!$this->hasPermission($arrayArg)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    if (!$this->hasPermission($arg)) {
+                        return false;
+                    }
                 }
             }
         }
@@ -736,8 +744,16 @@ class Permissions
 
         if (count($args) > 0) {
             foreach ($args as $arg) {
-                if (!$this->hasPermission($arg)) {
-                    return false;
+                if (is_array($arg)) {
+                    foreach ($arg as $arrayArg) {
+                        if (!$this->hasPermission($arrayArg)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    if (!$this->hasPermission($arg)) {
+                        return false;
+                    }
                 }
             }
         }
