@@ -16,7 +16,7 @@ class User
     private $hashSalt = 'd22BNFXfOD9Permissions;6jQrFaFJ48*5C:KiNNZ5XQm!Svq';
 
     // Set to true if the permissions class is used or false if not
-    private $usePermissions = false;
+    private $usePermissions = true;
 
     /**
      * Constructor
