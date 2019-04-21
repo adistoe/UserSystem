@@ -718,13 +718,13 @@ class Permissions
             foreach ($args as $arg) {
                 if (is_array($arg)) {
                     foreach ($arg as $arrayArg) {
-                        if (!$this->hasPermission($arrayArg)) {
-                            return false;
+                        if ($this->hasPermission($arrayArg)) {
+                            return true;
                         }
                     }
                 } else {
-                    if (!$this->hasPermission($arg)) {
-                        return false;
+                    if ($this->hasPermission($arg)) {
+                        return true;
                     }
                 }
             }
