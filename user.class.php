@@ -147,6 +147,9 @@ class User
             $active = 0;
         }
 
+        // Get current time
+        $now = date('Y-m-d H:i:s', time());
+
         // Insert new user
         $stmt = $this->db->prepare('
             INSERT INTO ' . $this->dbTables['user'] . '(
@@ -161,7 +164,9 @@ class User
                 country,
                 phone,
                 active,
-                token
+                token,
+                created,
+                updated
             ) VALUES(
                 :username,
                 :password,
@@ -174,7 +179,9 @@ class User
                 :country,
                 :phone,
                 :active,
-                :token
+                :token,
+                :now,
+                :now
             )
         ');
 
@@ -190,6 +197,7 @@ class User
         $stmt->bindParam(':phone', $phone);
         $stmt->bindParam(':active', $active);
         $stmt->bindParam(':token', $token);
+        $stmt->bindParam(':now', $now);
         $stmt->execute();
 
         // Check if there was an insertion
@@ -390,6 +398,9 @@ class User
             }
         }
 
+        // Get current time
+        $now = date('Y-m-d H:i:s', time());
+
         // Edit user
         $stmt = $this->db->prepare('
             UPDATE ' . $this->dbTables['user'] . ' SET
@@ -403,7 +414,8 @@ class User
                 city = :city,
                 country = :country,
                 phone = :phone,
-                active = :active
+                active = :active,
+                updated = :now
             WHERE
                 UID = :UID
         ');
@@ -423,6 +435,7 @@ class User
         $stmt->bindParam(':country', $country);
         $stmt->bindParam(':phone', $phone);
         $stmt->bindParam(':active', $active);
+        $stmt->bindParam(':now', $now);
 
         if ($stmt->execute()) {
             return true;
@@ -450,6 +463,35 @@ class User
         $token = $this->hashString($firstRandomNumber . $value . $secondRandomNumber);
 
         return $token;
+    }
+
+    /**
+     * Get user ID of the stayin token if exists
+     *
+     * @param string $token Token to check
+     *
+     * @return int Returns user id which is associated to the stayin token
+     */
+    private function getStayLoggedIn($token)
+    {
+        $token = $this->hashString($token);
+        $stmt = $this->db->prepare(
+            'SELECT
+                `UID`
+            FROM
+                user_stayin
+            WHERE
+                token = :token'
+        );
+
+        $stmt->bindParam('token', $token);
+        $stmt->execute();
+
+        if ($stayin = $stmt->fetch(PDO::FETCH_ASSOC)['UID']) {
+            return $stayin;
+        }
+
+        return false;
     }
 
     /**
@@ -580,10 +622,11 @@ class User
      *
      * @param string $user Username
      * @param string $pass Password
+     * @param boolean $stayin Specifies if the user should stay logged in
      *
      * @return mixed Returns false on error, else returns userinfo
      */
-    public function login($user, $pass)
+    public function login($user, $pass, $stayin = false)
     {
         // Check if the credentials are correct
         if ($uid = $this->checkLogin($user, $pass)) {
@@ -591,9 +634,54 @@ class User
             if ($userinfo = $this->getUserinfo($uid)) {
                 // Check if the user is active
                 if ($userinfo['active']) {
+                    if ($stayin && !$this->setStayLoggedIn($uid)) {
+                        return false;
+                    }
+
                     return $userinfo;
                 }
             }
+        }
+
+        return false;
+    }
+
+    /**
+     * Logout user
+     *
+     * @param int $uid ID of the user to logout
+     *
+     * @return mixed Returns false on error, else returns true
+     */
+    public function logout($uid)
+    {
+        $token = null;
+
+        if (isset($_COOKIE['stayin'])) {
+            $token = $_COOKIE['stayin'];
+        }
+
+        $hashedToken = $this->hashString($token);
+        $stmt = $this->db->prepare(
+            'DELETE FROM
+                user_stayin
+            WHERE
+                `UID` = :userID AND
+                token = :token'
+        );
+
+        $stmt->bindParam('userID', $uid);
+        $stmt->bindParam('token', $hashedToken);
+        
+        if ($stmt->execute()) {
+            // Delete cookie
+            setcookie(
+                'stayin',
+                $token,
+                time() - 1,
+                '/'
+            );
+            return true;
         }
 
         return false;
@@ -644,6 +732,97 @@ class User
             false
         )) {
             return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Set "stay logged in" state for the user
+     *
+     * @param int $uid User ID
+     * @param string $oldToken Token to get the entry to update if it already exists
+     */
+    private function setStayLoggedIn($uid, $oldToken = false)
+    {
+        if ($oldToken) {
+            $query = 'UPDATE
+                user_stayin
+                    SET
+                        token = :token,
+                        created = :now
+                    WHERE
+                        `UID` = :userID AND
+                        token = :oldToken';
+        } else {
+            $query = 'INSERT INTO
+                user_stayin (
+                    `UID`,
+                    token,
+                    created
+                )
+            VALUES (
+                :userID,
+                :token,
+                :now
+            )';
+        }
+
+        // Get current time
+        $now = date('Y-m-d H:i:s', time());
+
+        // Generate and hash token
+        $token = $uid . $this->generateToken($now);
+        $hashedToken = $this->hashString($token);
+
+        // Add "stay logged in" entry
+        $stmt = $this->db->prepare($query);
+
+        $stmt->bindParam('userID', $uid);
+        $stmt->bindParam('token', $hashedToken);
+        $stmt->bindParam('now', $now);
+
+        if ($oldToken) {
+            // Hash the old token
+            $oldToken = $this->hashString($oldToken);
+
+            // Bind it
+            $stmt->bindParam('oldToken', $oldToken);
+        }
+
+        if ($stmt->execute()) {
+            // Set cookie
+            setcookie(
+                'stayin',
+                $token,
+                time() + 60 * 60 * 24 * 365,
+                '/'
+            );
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Login user with stayin cookie
+     *
+     * @param string $token Stayin cookie token
+     *
+     * @return mixed Returns false on error, else returns userinfo
+     */
+    public function stayinLogin($token)
+    {
+        // Check if the stayin token exists
+        if ($uid = $this->getStayLoggedIn($token)) {
+            // Get userinfo
+            if ($userinfo = $this->getUserinfo($uid)) {
+                // Check if the user is active and if the stayin cookie could be set
+                if ($userinfo['active'] && $this->setStayLoggedIn($uid, $token)) {
+                    return $userinfo;
+                }
+            }
         }
 
         return false;

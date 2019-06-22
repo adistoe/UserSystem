@@ -23,4 +23,15 @@ CREATE TABLE `user` (
 	PRIMARY KEY (`UID`)
 ) DEFAULT CHARSET=utf8;
 
+--
+-- Table structure for table `user_stayin`
+--
+
+CREATE TABLE `user_stayin` (
+	`UID` int(11) UNSIGNED NOT NULL,
+	`token` varchar(128) NOT NULL,
+	`created` datetime NOT NULL,
+	PRIMARY KEY (`UID`)
+) DEFAULT CHARSET=utf8;
+
 COMMIT;
