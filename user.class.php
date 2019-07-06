@@ -12,8 +12,11 @@ class User
         'user' => 'user'
     );
 
-    // Salt for string hashes
-    private $hashSalt = 'd22BNFXfOD9Permissions;6jQrFaFJ48*5C:KiNNZ5XQm!Svq';
+    // Stuff for hashing
+    private $hashPepper = 'd22BNFXfOD9Permissions;6jQrFaFJ48*5C:KiNNZ5XQm!Svq';
+    private $hashOptions = [
+        'cost' => 10
+    ];
 
     // Set to true if the permissions class is used or false if not
     private $usePermissions = true;
@@ -107,7 +110,7 @@ class User
         }
 
         // Hash password
-        $password = $this->hashString($password);
+        $password = password_hash($password . $this->hashPepper, PASSWORD_DEFAULT, $this->hashOptions);
 
         // Correct encoding where necessary
         $username = htmlspecialchars($username);
@@ -205,42 +208,6 @@ class User
             return true;
         }
 
-        return false;
-    }
-
-    /**
-     * Check if the login data is correct
-     *
-     * @param string $user Username
-     * @param string $pass Password
-     * @param boolean $isHashed Hash state of the password
-     *
-     * @return mixed Returns false if login is incorrect, else returns userID
-     */
-    private function checkLogin($user, $pass, $isHashed = false)
-    {
-        if (!$isHashed) {
-            $pass = $this->hashString($pass);
-        }
-
-        $stmt = $this->db->prepare('
-            SELECT
-                UID
-            FROM ' . $this->dbTables['user'] . '
-            WHERE
-                username = :user AND
-                password = :pass
-        ');
-
-        $stmt->bindParam(':user', $user);
-        $stmt->bindParam(':pass', $pass);
-        $stmt->execute();
-
-        // Check if the user data is valid
-        if ($row = $stmt->fetchObject()) {
-            return $row->UID;
-        }
-        
         return false;
     }
 
@@ -367,7 +334,7 @@ class User
 
         // Hash password
         if ($password != '') {
-            $password = $this->hashString($password);
+            $password = password_hash($password . $this->hashPepper, PASSWORD_DEFAULT, $this->hashOptions);
         }
 
         // Correct encoding where necessary
@@ -594,27 +561,9 @@ class User
      */
     private function hashString($str)
     {
-        $str = hash('sha512', $this->hashSalt . $str);
+        $str = hash('sha512', $this->hashPepper . $str);
 
         return $str;
-    }
-
-    /**
-     * Check if the user is logged in
-     *
-     * @param string $user Username
-     * @param string $pass Password
-     * @param boolean $isHashed Hash state of the password
-     *
-     * @return mixed Returns false if login is incorrect, else returns true
-     */
-    public function isLoggedIn($user, $pass, $isHashed = true)
-    {
-        if (!$this->checkLogin($user, $pass, $isHashed)) {
-            return false;
-        }
-
-        return true;
     }
 
     /**
@@ -628,17 +577,49 @@ class User
      */
     public function login($user, $pass, $stayin = false)
     {
-        // Check if the credentials are correct
-        if ($uid = $this->checkLogin($user, $pass)) {
-            // Get userinfo
-            if ($userinfo = $this->getUserinfo($uid)) {
-                // Check if the user is active
-                if ($userinfo['active']) {
-                    if ($stayin && !$this->setStayLoggedIn($uid)) {
-                        return false;
-                    }
+        $stmt = $this->db->prepare('
+            SELECT
+                UID,
+                password
+            FROM
+                ' . $this->dbTables['user'] . '
+            WHERE
+                username = :user
+        ');
 
-                    return $userinfo;
+        $stmt->bindParam(':user', $user);
+        $stmt->execute();
+
+        // Check if the user data is valid
+        if ($row = $stmt->fetchObject()) {
+            if (password_verify($pass . $this->hashPepper, $row->password)) {
+                // Check if the password hash is up to date else update it
+                if (password_needs_rehash($row->password, PASSWORD_DEFAULT, $this->hashOptions)) {
+                    $newPass = password_hash($pass . $this->hashPepper, PASSWORD_DEFAULT, $this->hashOptions);
+                    $stmt = $this->db->prepare(
+                        'UPDATE
+                            ' . $this->dbTables['user'] . '
+                        SET
+                            password = :password
+                        WHERE
+                            UID = :userID'
+                    );
+
+                    $stmt->bindParam('password', $newPass);
+                    $stmt->bindParam('userID', $row->UID);
+                    $stmt->execute();
+                }
+
+                // Get userinfo
+                if ($userinfo = $this->getUserinfo($row->UID)) {
+                    // Check if the user is active
+                    if ($userinfo['active']) {
+                        if ($stayin && !$this->setStayLoggedIn($row->UID)) {
+                            return false;
+                        }
+    
+                        return $userinfo;
+                    }
                 }
             }
         }
