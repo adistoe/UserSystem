@@ -9,7 +9,8 @@ class User
 
     // Database tables - can be renamed if needed (only the value)
     private $dbTables = array(
-        'user' => 'user'
+        'user'        => 'user',
+        'user_stayin' => 'user_stayin'
     );
 
     // Stuff for hashing
@@ -235,7 +236,13 @@ class User
                 updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     ON UPDATE CURRENT_TIMESTAMP,
                 PRIMARY KEY (UID)
-            ) DEFAULT CHARSET=utf8
+            ) DEFAULT CHARSET=utf8;
+
+            CREATE TABLE ' . $this->dbTables['user_stayin'] . ' (
+                UID int(11) UNSIGNED NOT NULL,
+                token varchar(128) NOT NULL,
+                created datetime NOT NULL
+            ) DEFAULT CHARSET=utf8;
         ');
 
         if ($stmt->execute()) {
@@ -446,7 +453,7 @@ class User
             'SELECT
                 `UID`
             FROM
-                user_stayin
+                ' . $this->dbTables['user_stayin'] . '
             WHERE
                 token = :token'
         );
@@ -645,7 +652,7 @@ class User
         $hashedToken = $this->hashString($token);
         $stmt = $this->db->prepare(
             'DELETE FROM
-                user_stayin
+                ' . $this->dbTables['user_stayin'] . '
             WHERE
                 `UID` = :userID AND
                 token = :token'
@@ -728,7 +735,7 @@ class User
     {
         if ($oldToken) {
             $query = 'UPDATE
-                user_stayin
+                ' . $this->dbTables['user_stayin'] . '
                     SET
                         token = :token,
                         created = :now
@@ -737,7 +744,7 @@ class User
                         token = :oldToken';
         } else {
             $query = 'INSERT INTO
-                user_stayin (
+                ' . $this->dbTables['user_stayin'] . ' (
                     `UID`,
                     token,
                     created
